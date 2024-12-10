@@ -24,6 +24,7 @@ fn ui_system(
     mut loaded_file: Local<Option<PathBuf>>,
     mut current_dir_str: Local<String>,
 ) {
+    egui_extras::install_image_loaders(contexts.ctx_mut());
     if current_dir_str.is_empty() {
         *current_dir_str = String::from("./root");
     }
