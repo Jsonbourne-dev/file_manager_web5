@@ -121,3 +121,18 @@ How to modify:
 
 To change the layout or add more UI components, adjust the structure inside ui.horizontal() and ui.vertical().
 Modify the interactions by changing button actions or adding more logic to interact with directories, files, or custom components.
+
+
+// RIGHT CLICK & IMAGE BUTTON
+
+let logo = ui.add(egui::ImageButton::new(egui::Image::new(egui::include_image!("assets/folder.png")).max_width(120.00)));
+if logo.secondary_clicked() {
+    println!("right click");
+};
+
+// Context Menu
+logo.context_menu(|ui| {
+    if ui.button("Close the menu").clicked() {
+        ui.close_menu();
+    }
+});
