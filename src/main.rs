@@ -147,8 +147,11 @@ fn ui_system(
                                     println!("Right-clicked on folder: {}", item_name);
                                 }
 
-                                // Folder context menu
+                                // Folder context menu with delete option
                                 logo.context_menu(|ui| {
+                                    if ui.button("Delete Folder").clicked() {
+                                        delete_folder(item);  // Delete the folder
+                                    }
                                     if ui.button("Close the menu").clicked() {
                                         ui.close_menu();
                                     }
@@ -174,8 +177,11 @@ fn ui_system(
                                     println!("Right-clicked on file: {}", item_name);
                                 }
 
-                                // File context menu
+                                // File context menu with delete option
                                 logo.context_menu(|ui| {
+                                    if ui.button("Delete File").clicked() {
+                                        delete_file(item);  // Delete the file
+                                    }
                                     if ui.button("Close the menu").clicked() {
                                         ui.close_menu();
                                     }
@@ -289,5 +295,23 @@ fn open_file_content(file_path: &Path, input_text: &mut String, loaded_file: &mu
         *input_text = content;  // Load the content into input_text
         *loaded_file = Some(file_path.to_path_buf());  // Store the loaded file path
         println!("Loaded content from {:?}", file_path);
+    }
+}
+
+// Deletes a file
+fn delete_file(file_path: &Path) {
+    if let Err(e) = fs::remove_file(file_path) {  // Delete the file
+        eprintln!("Error deleting file: {}", e);
+    } else {
+        println!("File deleted: {:?}", file_path);
+    }
+}
+
+// Deletes a folder
+fn delete_folder(folder_path: &Path) {
+    if let Err(e) = fs::remove_dir_all(folder_path) {  // Delete the folder
+        eprintln!("Error deleting folder: {}", e);
+    } else {
+        println!("Folder deleted: {:?}", folder_path);
     }
 }
