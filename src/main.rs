@@ -75,16 +75,21 @@ fn ui_system(
                     ui.text_edit_singleline(&mut *current_dir_str);
                 });
 
-                // Button to create a new file
-                if ui.button("Create File").clicked() {
-                    *show_file_popup = true;  // Set the file creation popup flag to true
-                    *input_text = String::new(); // Clear any previous input text
-                }
+                // Detect right-click on the blank area of the panel
+                ui.interact(ui.max_rect(), ui.id(), egui::Sense::click()).context_menu(|ui| {
+                    if ui.button("Create File").clicked() {
+                        *show_file_popup = true; // Show the file creation popup
+                        *input_text = String::new(); // Clear the input text
+                        ui.close_menu(); // Close the context menu
+                    }
+                    if ui.button("Create Folder").clicked() {
+                        let random_folder_name = format!("folder_{}", generate_random_number());
+                        create_folder(&random_folder_name, &*current_dir_str); // Create a new folder
+                        println!("Created folder: {}", random_folder_name);
+                        ui.close_menu(); // Close the context menu
+                    }
+                });
 
-                // Button to create a new folder
-                if ui.button("Create Folder").clicked() {
-                    *show_folder_popup = true;  // Set the folder creation popup flag to true
-                }
 
                 // Show the file creation popup
                 if *show_file_popup {
@@ -124,7 +129,6 @@ fn ui_system(
 
                 // Display files and folders in the current directory
                 ui.horizontal(|ui| {
-                    ui.label("Files and Folders in current directory: ");
                     for item in files_and_folders.iter() {
                         let item_name = item.file_name().unwrap_or_default().to_string_lossy();
 
@@ -151,9 +155,6 @@ fn ui_system(
                                 logo.context_menu(|ui| {
                                     if ui.button("Delete Folder").clicked() {
                                         delete_folder(item);  // Delete the folder
-                                    }
-                                    if ui.button("Close the menu").clicked() {
-                                        ui.close_menu();
                                     }
                                 });
 
@@ -192,17 +193,7 @@ fn ui_system(
                         }
                     }
                 });
-
-                // Display the currently loaded file if any
-                if let Some(ref path) = *loaded_file {
-                    ui.label(format!(
-                        "Loaded File: {}",
-                        path.file_name().unwrap_or_default().to_string_lossy()
-                    ));
-                } else {
-                    ui.label("No file loaded.");
-                }
-
+                
                 // Add space for better UI layout
                 let top_half_height = ui.available_height() / 2.0;
                 ui.add_space(top_half_height);
