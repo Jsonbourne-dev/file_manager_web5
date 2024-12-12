@@ -1,24 +1,15 @@
-use bevy::{prelude::*, window::WindowResolution};
+use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use rand::Rng;
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
-
+//carguse bevy::{color::palettes::basic::BLACK, prelude::*};
 
 fn main() {
     // Create a new Bevy app and add default plugins and the EguiPlugin for UI
     App::new()
-
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                resolution: WindowResolution::new(628., 800.),
-                title: "🗄️ Activitude file manager 🗂️".into(),
-                ..default()
-            }),
-            ..default()
-        }))
-       // .add_plugins(DefaultPlugins)  // Adds default plugins (audio, window, etc.)
+        .add_plugins(DefaultPlugins)  // Adds default plugins (audio, window, etc.)
         .add_plugins(EguiPlugin)  // Adds Egui plugin for UI functionality
         .insert_resource(ClearColor(Color::rgb(214.0 / 255.0, 204.0 / 255.0, 185.0 / 255.0))) // Set the background color of the window
         .add_systems(Update, ui_system) // Register the UI update system
@@ -26,7 +17,9 @@ fn main() {
 }
 
 fn ui_system(
-
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
     mut contexts: EguiContexts,  // Access the Egui context for UI updates
     mut input_text: Local<String>,  // Holds the text content for file operations
     mut files_and_folders: Local<Vec<PathBuf>>,  // Holds files and folders in the current directory
@@ -36,7 +29,6 @@ fn ui_system(
     mut show_folder_popup: Local<bool>,  // Flag to show the folder creation popup
     mut show_save_popup: Local<bool>,  // Flag to show the save popup for file content
 ) {
-
 
     let ctx = contexts.ctx_mut();  // Get mutable reference to the Egui context
 
@@ -77,42 +69,25 @@ fn ui_system(
         *files_and_folders = [folder_paths, file_paths].concat();
     }
 
-    egui::TopBottomPanel::top("top_panel")
-    .exact_height(50.0) // Set height to 50 px
-    .frame(
-        egui::Frame::none()
-            .fill(egui::Color32::from_rgb(153, 153, 153)) // Set background color to #999999
-            .inner_margin(egui::Margin::same(10.0)),   // Add some padding
-    )
-    .show(ctx, |ui| {
-        ui.vertical_centered(|ui| {
-            ui.add_space((50.0 - 20.0) / 10.0); 
-
-            egui::Frame::none()
-                .fill(egui::Color32::WHITE) 
-                .rounding(egui::Rounding::same(15.0))
-                .inner_margin(egui::Margin::symmetric(10.0, 5.0)) 
-                .stroke(egui::Stroke::new(1.0, egui::Color32::BLACK)) 
-                .show(ui, |ui| {
-                    ui.allocate_ui(egui::vec2(500.0, ui.available_height()), |ui| {
-                        ui.add(
-                            egui::TextEdit::singleline(&mut *current_dir_str)
-                                .frame(false) 
-                                .desired_width(500.0), 
-                        );
-                    });
-                });
-        });
-    });
-
-
     // Central panel to show the main UI
     egui::CentralPanel::default()
-        .frame(egui::Frame::default().inner_margin(egui::vec2(50.0, 10.0))) // Add inner margin
+        .frame(egui::Frame::default().inner_margin(egui::vec2(20.0, 20.0))) // Add inner margin
         .show(ctx, |ui| {
-            ui.vertical_centered(|ui| { 
+            ui.vertical(|ui| { 
 
-                    ui.add_space(100.0);
+              //  commands.spawn(Camera2d);
+                //commands.spawn((
+                  //  Mesh2d(meshes.add(Rectangle::default())),
+                    //MeshMaterial2d(materials.add(Color::from(BLACK))),
+                   // Transform::default().with_scale(Vec3::splat(128.)),
+                //));
+            
+                    // Show the current directory input field
+                    ui.vertical(|ui| {
+                       //ui.label("Current Directory: ");
+                        ui.text_edit_singleline(&mut *current_dir_str);
+                    });
+
                     // Detect right-click on the blank area of the panel
                     ui.interact(ui.max_rect(), ui.id(), egui::Sense::click()).context_menu(|ui| {
                         if ui.button("Create File").clicked() {
@@ -163,93 +138,73 @@ fn ui_system(
                         create_folder(&random_folder_name, &*current_dir_str);  // Create the folder
                         *show_folder_popup = false;  // Close the folder popup
                     }
-                    //####
+
                     // Display files and folders in the current directory
-                    ui.vertical(|ui| {
-                        // Use a group styled with a frame for the outlined container
-                        egui::Frame::none()
-                            .stroke(egui::Stroke::new(1.0, egui::Color32::BLACK)) // Black outline
-                            .fill(egui::Color32::WHITE) // White background
-                            .inner_margin(egui::vec2(10.0, 10.0)) // Inner padding
-                            .rounding(egui::Rounding::same(10.0)) // Rounded corners
-                            .show(ui, |ui| {
-                                // Add the ScrollArea for the files and folders list
-                                egui::ScrollArea::vertical() // Makes the container scrollable vertically
-                                    .auto_shrink([false, true]) // Only shrink horizontally; keep the vertical scrolling
-                                    .show(ui, |ui| {
-                                        const COLUMNS: usize = 6; // Number of columns in the grid
-                                        let mut current_col = 0; // Track the current column
+                    ui.horizontal(|ui| {
+                        for item in files_and_folders.iter() {
+                            let item_name = item.file_name().unwrap_or_default().to_string_lossy();
 
-                                        // Create a horizontal wrapped layout for the grid
-                                        ui.horizontal_wrapped(|ui| {
-                                            for item in files_and_folders.iter() {
-                                                let item_name = item.file_name().unwrap_or_default().to_string_lossy();
+                            // Handle directory item
+                            if item.is_dir() {
+                                ui.vertical(|ui| {
+                                    let logo = ui.add(egui::ImageButton::new(
+                                        egui::Image::new(egui::include_image!("assets/folder.png"))
+                                            .fit_to_exact_size(egui::vec2(75.0, 75.0)),
+                                    ));
 
-                                                // Handle directory or file item
-                                                ui.vertical(|ui| {
-                                                    if item.is_dir() {
-                                                        let logo = ui.add(
-                                                            egui::ImageButton::new(
-                                                                egui::Image::new(egui::include_image!("assets/folder.png"))
-                                                                    .fit_to_exact_size(egui::vec2(75.0, 75.0)),
-                                                            )
-                                                            .frame(false),
-                                                        );
+                                    // Directory clicked: Update the current directory path
+                                    if logo.clicked() {
+                                        *current_dir_str = format!("{}/{}", *current_dir_str, item_name);
+                                        println!("Updated current directory to: {}", *current_dir_str);
+                                    }
 
-                                                        if logo.clicked() {
-                                                            *current_dir_str = format!("{}/{}", *current_dir_str, item_name);
-                                                        }
+                                    // Handle right-click on the folder
+                                    if logo.secondary_clicked() {
+                                        println!("Right-clicked on folder: {}", item_name);
+                                    }
 
-                                                                                        // Handle right-click on the folder
-                                                    if logo.secondary_clicked() {
-                                                        println!("Right-clicked on folder: {}", item_name);
-                                                    }
-
-                                                    // Folder context menu with delete option
-                                                    logo.context_menu(|ui| {
-                                                        if ui.button("Delete Folder").clicked() {
-                                                            delete_folder(item);  // Delete the folder
-                                                        }
-                                                    });
-
-                                                        ui.label(item_name);
-                                                    } else {
-                                                        let logo = ui.add(
-                                                            egui::ImageButton::new(
-                                                                egui::Image::new(egui::include_image!("assets/file.png"))
-                                                                    .fit_to_exact_size(egui::vec2(75.0, 75.0)),
-                                                            )
-                                                            .frame(false),
-                                                        );
-
-                                                        if logo.clicked() {
-                                                            open_file_content(item, &mut *input_text, &mut *loaded_file);
-                                                            *show_save_popup = true;
-                                                        }
-
-                                                    // File context menu with delete option
-                                                    logo.context_menu(|ui| {
-                                                        if ui.button("Delete File").clicked() {
-                                                            delete_file(item);  // Delete the file
-                                                        }
-                                                    });
-
-                                                        ui.label(item_name);
-                                                    }
-                                                });
-
-                                                // Move to the next column, reset to first column if reached COLUMNS limit
-                                                current_col += 1;
-                                                if current_col >= COLUMNS {
-                                                    current_col = 0;
-                                                    ui.end_row(); // Start a new row after every 'COLUMNS' items
-                                                }
-                                            }
-                                        });
+                                    // Folder context menu with delete option
+                                    logo.context_menu(|ui| {
+                                        if ui.button("Delete Folder").clicked() {
+                                            delete_folder(item);  // Delete the folder
+                                        }
                                     });
-                            });
+
+                                    ui.label(item_name);  // Show the folder name
+                                });
+                            } else {  // Handle file item
+                                ui.vertical(|ui| {
+                                    let logo = ui.add(egui::ImageButton::new(
+                                        egui::Image::new(egui::include_image!("assets/file.png"))
+                                            .fit_to_exact_size(egui::vec2(75.0, 75.0)),
+                                    ).frame(true));
+
+                                    // File clicked: Open the file content for editing
+                                    if logo.clicked() {
+                                        open_file_content(item, &mut *input_text, &mut *loaded_file);
+                                        *show_save_popup = true;
+                                    }
+
+                                    // Handle right-click on the file
+                                    if logo.secondary_clicked() {
+                                        println!("Right-clicked on file: {}", item_name);
+                                    }
+
+                                    // File context menu with delete option
+                                    logo.context_menu(|ui| {
+                                        if ui.button("Delete File").clicked() {
+                                            delete_file(item);  // Delete the file
+                                        }
+                                        if ui.button("Close the menu").clicked() {
+                                            ui.close_menu();
+                                        }
+                                    });
+
+                                    ui.label(item_name);  // Show the file name
+                                });
+                            }
+                        }
                     });
-                   //###
                     
                     // Add space for better UI layout
                     let top_half_height = ui.available_height() / 2.0;
@@ -345,7 +300,7 @@ fn open_file_content(file_path: &Path, input_text: &mut String, loaded_file: &mu
         println!("Loaded content from {:?}", file_path);
     }
 }
- 
+
 // Deletes a file
 fn delete_file(file_path: &Path) {
     if let Err(e) = fs::remove_file(file_path) {  // Delete the file
